@@ -1,0 +1,10 @@
+pipeline script:
+
+stage 'Deploy to production'
+def userInput = input(
+ id: 'userInput', message: "Ready to Deploy WAR PRODCUTON VERSION ${WAR_PROD_VERSION}" , parameters: [
+ [$class: 'TextParameterDefinition', defaultValue: 'studentx', description: 'Enter Approval Name', name: 'Approval Name']
+])
+echo ("Approval Name: "+userInput)
+echo "WAR PRODCUTON VERSION ${WAR_PROD_VERSION}"
+build job: 'demoapp-deploy-tomcat-production', parameters: [string(name: 'WAR_PROD_VERSION', value: "${WAR_PROD_VERSION}")]
