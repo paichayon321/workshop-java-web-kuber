@@ -51,7 +51,7 @@ def notifyLINE(token, message) {
 }
 
 
-
+def imageRes
 def releaseDate
 def releaseTag
 node {
@@ -75,11 +75,14 @@ void publishTestResults() {
             outputFileName   : '**\\output*.xml'
     ])
 }
+// properties([[$class: 'JiraProjectProperty'], buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')), gitLabConnection('devops-gitlab'), parameters([booleanParam(defaultValue: true, description: 'Enable CheckMarxScan', name: 'CheckMarxScan'), booleanParam(defaultValue: true, description: 'Enable ClairScan', name: 'ClairScan')])])
+
 pipeline {
 //   agent {
 //       //label 'slave01'
 //   }
   agent any
+
   stages{
     stage('BuildApp') {
       steps {
@@ -116,6 +119,8 @@ pipeline {
       steps {
         script {
           echo "Now Perform CheckMarx Steps"
+          echo "Enable CheckMarx Scan =  ${CheckMarxScan}"
+          if ("${CheckMarxScan}" == "true") {
           step([$class: 'CxScanBuilder', comment: '', credentialsId: '', excludeFolders: '', excludeOpenSourceFolders: '', exclusionsSetting: 'global', failBuildOnNewResults: false, failBuildOnNewSeverity: 'HIGH', filterPattern: '''!**/_cvs/**/*, !**/.svn/**/*,   !**/.hg/**/*,   !**/.git/**/*,  !**/.bzr/**/*, !**/bin/**/*,
 !**/obj/**/*,  !**/backup/**/*, !**/.idea/**/*, !**/*.DS_Store, !**/*.ipr,     !**/*.iws,
 !**/*.bak,     !**/*.tmp,       !**/*.aac,      !**/*.aif,      !**/*.iff,     !**/*.m3u, !**/*.mid, !**/*.mp3,
@@ -127,7 +132,10 @@ pipeline {
 !**/*.hdml,    !**/*.hsql,      !**/*.ht,       !**/*.hta,      !**/*.htc,     !**/*.htd, !**/*.war, !**/*.ear,
 !**/*.htmls,   !**/*.ihtml,     !**/*.mht,      !**/*.mhtm,     !**/*.mhtml,   !**/*.ssi, !**/*.stm,
 !**/*.stml,    !**/*.ttml,      !**/*.txn,      !**/*.xhtm,     !**/*.xhtml,   !**/*.class, !**/*.iml, !Checkmarx/Reports/*.*''', fullScanCycle: 10, generateXmlReport: true, groupId: '00000000-1111-1111-b111-989c9070eb11', includeOpenSourceFolders: '', osaArchiveIncludePatterns: '*.zip, *.war, *.ear, *.tgz', osaEnabled: true, osaInstallBeforeScan: false, password: '{AQAAABAAAAAQ2fU/TC0tqbHpQ9jKY1RJeB+kieFINsHrF1Wnm+K9T6k=}', preset: '7', projectName: 'devsecops', sastEnabled: true, serverUrl: 'http://vsoc.mooo.com:1971', sourceEncoding: '1', username: '', vulnerabilityThresholdResult: 'FAILURE', waitForResultsEnabled: true])
-          message = "\nJob: ${env.JOB_NAME} \nStage Checkmarx is Success. \nSee Report at \n${env.BUILD_URL}"
+          message = "\nJob: ${env.JOB_NAME} \nStage Checkmarx Scanis Success. \nSee Report at \n${env.BUILD_URL}"
+          } else {
+          message = "\nJob: ${env.JOB_NAME} \nStage Bypass Checkmarx scan stage Success. \nSee Report at \n${env.BUILD_URL}"
+          }
           notifyLINE("${linecicdnotify}", "${message}")
           notifyLINE("${linedev}", "${message}")
           //build 'archive'
@@ -165,10 +173,33 @@ pipeline {
         }
       }
     }
+    stage('ClairScan') {
+      steps {
+        script {
+          echo "Now Perform Claur Scan Steps" 
+          if ("${ClairScan}" == "true") {
+          sh "cd /clairctl && sudo docker-compose exec -T clairctl clairctl analyze -l ${dockerRepoHost}/${dockerRepo}/demoapp:devlatest --no-clean"  
+          sh "cd /clairctl && sudo docker-compose exec -T clairctl clairctl report -l ${dockerRepoHost}/${dockerRepo}/demoapp:devlatest --no-clean"
+          sh "cp /clairctl/docker-compose-data/clairctl-reports/html/analysis-${dockerRepoHost}-${dockerRepo}-demoapp-devlatest.html ./clair-report/"
+          publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: './clair-report/', reportFiles: "analysis-${dockerRepoHost}-${dockerRepo}-demoapp-devlatest.html", reportName: 'Clair Report', reportTitles: ''])
+                   
+          message = "\nJob: ${env.JOB_NAME} \nStage Clair Scan is Success. \nSee Report at \n${env.BUILD_URL}Clair_20Report/"
+           } else {
+          message = "\nJob: ${env.JOB_NAME} \nStage Clair Scan Bypass is Success. \nSee Report at \n${env.BUILD_URL}"
+           }
+          notifyLINE("${linecicdnotify}", "${message}")
+          notifyLINE("${linesec}", "${message}")
+        }
+      }
+    }
     stage('Deploy DEV') {
       steps {
         script {
           echo "Now Perform Deploy DEV Steps"  
+          // Check image vulnerabilityThresholdResult
+          //imageRes=sh (returnStdout: true, script: """sudo docker pull ${dockerRepoHost}/${dockerRepo}/demoapp:devlatest || error=false """)
+          imageRes=sh (returnStdout: true, script: """sudo docker pull ${dockerRepoHost}/${dockerRepo}/demoapp:devlatest""")
+          // Start deploy
           sh "chmod +x ./kubernetes/buildyaml.sh"
           sh "export IMAGE_NAME=${dockerRepoHost}/${dockerRepo}/demoapp   && export BUILD_NUMBER='devlatest'  && ./kubernetes/buildyaml.sh"
           sh "sudo kubectl -n ${devenv} delete -f deployapp.yaml"
@@ -215,7 +246,7 @@ pipeline {
 //    }
     stage('Deploy UAT') {
       steps {
-        timeout(time:600, unit:'MINUTES') {
+        timeout(time:1, unit:'MINUTES') {
             //input message: "Release version ${releaseTag} to UAT?", ok: "Approve"
             script {
               commitId = "${commitId}".substring(0,7)
