@@ -14,7 +14,7 @@ variables:
   imageRepository: 'paichayonworkshopjavawebkuber'
   containerRegistry: 'toomregistry.azurecr.io'
   #dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  dockerfilePath: 'Dockerfile'
+  dockerfilePath: './Dockerfile'
   tag: '$(Build.BuildId)'
   
   # Agent VM image name
