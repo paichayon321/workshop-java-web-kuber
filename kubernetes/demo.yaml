@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: demoapp
-        image: toomregistrydemo.azurecr.io/demoapp:1
+        image: toomregistrydemo.azurecr.io/demoapp:2
         imagePullPolicy: Always
         ports:
         - containerPort: 80
