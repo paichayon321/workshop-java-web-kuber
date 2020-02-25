@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: demoapp
-        image: nginx:latest
+        image: toomregistrydemo.azurecr.io/demoapp:$imagetag
         imagePullPolicy: Always
         ports:
         - containerPort: 80
