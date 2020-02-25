@@ -1,0 +1,16 @@
+apiVersion : apps/v1beta1
+kind: Deployment
+metadata:
+  name: paichayonworkshopjavawebkuber 
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: paichayonworkshopjavawebkuber 
+    spec:
+      containers:
+        - name: paichayonworkshopjavawebkuber 
+          image: toomregistry.azurecr.io/paichayonworkshopjavawebkuber
+          ports:
+          - containerPort: 8080
